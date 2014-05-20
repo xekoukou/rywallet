@@ -1,0 +1,11 @@
+{
+    "name": "ryWallet",
+    "description": "ryaki wallet",
+    "version": "0.0.1",
+    "private": true,
+    "dependencies": {
+        "socket.io": "x",
+        "openpgp": "x",
+        "cookies": "x"
+    }
+}
