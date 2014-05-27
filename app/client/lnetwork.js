@@ -6,7 +6,7 @@ var lport = 8888;
 function LData() {
 
 
-    this.scoket = io.connect('http://127.0.0.1:' + lport + '/local');
+    this.socket = io.connect('http://127.0.0.1:' + lport + '/local');
     this.encryptCall = null;
     this.encryptArgs = null;
     this.decryptCall = null;
@@ -19,6 +19,10 @@ function LData() {
     this.encryptSignArgs = null;
     this.decryptVerifyCall = null;
     this.decryptVerifyArgs = null;
+    this.publicKeyCall = null;
+    this.publicKeyArgs = null;
+
+    var thiss = this;
 
     this.encrypt = function(publicKey, text, callback, args) {
 
@@ -37,9 +41,9 @@ function LData() {
 
     };
     this.socket.on("encrypt", function(data) {
-        this.encryptCall(data, this.encryptArgs);
-        this.encryptCall = null;
-        this.encryptArgs = null;
+        thiss.encryptCall(data, thiss.encryptArgs);
+        thiss.encryptCall = null;
+        thiss.encryptArgs = null;
     });
 
 
@@ -57,9 +61,9 @@ function LData() {
 
     };
     this.socket.on("decrypt", function(data) {
-        this.decryptCall(data, this.decryptArgs);
-        this.decryptCall = null;
-        this.decryptArgs = null;
+        thiss.decryptCall(data, thiss.decryptArgs);
+        thiss.decryptCall = null;
+        thiss.decryptArgs = null;
     });
 
 
@@ -78,13 +82,13 @@ function LData() {
 
     };
     this.socket.on("sign", function(data) {
-        this.signCall(data, this.signArgs);
-        this.signCall = null;
-        this.signArgs = null;
+        thiss.signCall(data, thiss.signArgs);
+        thiss.signCall = null;
+        thiss.signArgs = null;
     });
 
 
-    this.encryptSign = function(publicKey, text, args) {
+    this.encryptSign = function(publicKey, text, callback, args) {
 
         if (this.encryptSignCall == null) {
             this.socket.emit("encryptSign", {
@@ -101,12 +105,12 @@ function LData() {
 
     };
     this.socket.on("encryptSign", function(data) {
-        this.encryptSignCall(data, this.encryptSignArgs);
-        this.encryptSignCall = null;
-        this.encryptSignArgs = null;
+        thiss.encryptSignCall(data, thiss.encryptSignArgs);
+        thiss.encryptSignCall = null;
+        thiss.encryptSignArgs = null;
     });
 
-    this.decryptVerify = function(publicKey, text, args) {
+    this.decryptVerify = function(publicKey, text, callback, args) {
 
         if (this.decryptVerifyCall == null) {
             this.socket.emit("decryptVerify", {
@@ -123,10 +127,33 @@ function LData() {
 
     };
     this.socket.on("decryptVerify", function(data) {
-        this.decryptVerifyCall(data, this.decryptVerifyArgs);
-        this.decryptVerifyCall = null;
-        this.decryptVerifyArgs = null;
+        thiss.decryptVerifyCall(data, thiss.decryptVerifyArgs);
+        thiss.decryptVerifyCall = null;
+        thiss.decryptVerifyArgs = null;
+    });
+
+    this.publicKey = function(callback, args) {
+
+        if (this.publicKeyCall == null) {
+            console.log("requesting key");
+            this.socket.emit("publicKey", null);
+            this.publicKeyCall = callback;
+            this.publicKeyArgs = args;
+            return 1;
+        } else {
+            return 0;
+        }
+
+
+    };
+    this.socket.on("publicKey", function(data) {
+        thiss.publicKeyCall(data, thiss.publicKeyArgs);
+        thiss.publicKeyCall = null;
+        thiss.publicKeyArgs = null;
     });
 
 
+
 }
+
+var ldata = new LData();

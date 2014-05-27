@@ -22,14 +22,13 @@ module.exports = function User() {
         this.sessionId = 0;
         this.authenticated = 0;
     }
-    this.authenticate = function(res, password) {
+    this.authenticate = function(password) {
         if (this.privateKey.decrypt(password)) {
             this.authenticated = 1;
         }
-        sendData(res, null);
     };
 
-    this.createKeys = function(res, name, lname, password) {
+    this.createKeys = function(name, lname, password) {
         console.log("creating keys ... please wait.");
         console.log("userId:" + name + " " + lname);
         console.log("password:" + password);
@@ -50,7 +49,6 @@ module.exports = function User() {
         this.publicKey = openpgp.key.readArmored(key.publicKeyArmored).keys[0];
         this.privateKey = openpgp.key.readArmored(key.privateKeyArmored).keys[0];
         this.newUser = 0;
-        sendData(res, null);
         return;
     };
 

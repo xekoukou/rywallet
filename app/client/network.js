@@ -1,3 +1,5 @@
+var surl = "192.168.1.3:8081";
+
 var searchArrayf = function(posX, posY, zoom, searchArray) {
     var power = Math.floor(Math.log(maxHeight / zoom) / Math.LN2) - 1;
     var x = posX - (posX % Math.pow(2, power));

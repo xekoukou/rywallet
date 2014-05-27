@@ -8,9 +8,9 @@ var pfolder = "./client";
 
 module.exports = function Serve(user) {
 
-    user: user,
+    this.user = user;
 
-    notHavingSessionId: function(url, res, cookies) {
+    this.notHavingSessionId = function(url, res, cookies) {
 
         console.log("a new session started, destrroying the previous one if it existed");
         this.user.createSessionId();
@@ -21,16 +21,16 @@ module.exports = function Serve(user) {
         res.end();
 
 
-    },
+    };
 
-    sendNotFound: function(res) {
+    this.sendNotFound = function(res) {
         res.writeHead(404);
         res.end("404 Not Found");
         return;
-    },
+    };
 
     //url is the url asked by the client or null that sends the user to the default page
-    sendData: function(res, url) {
+    this.sendData = function(res, url) {
 
         if (url == null) {
             url = "/ryWallet.html";
@@ -100,10 +100,10 @@ module.exports = function Serve(user) {
         res.end(data);
         return;
 
-    },
+    };
 
 
-    route: function(req, res) {
+    this.route = function(req, res) {
 
 
         if (req.method == 'GET') {
@@ -119,20 +119,23 @@ module.exports = function Serve(user) {
                     req.connection.destroy();
                 }
             });
+            var thiss = this;
             req.on('end', function() {
 
                 var post = qs.parse(body);
                 if (post.password) {
                     console.log("post:" + post.password);
-                    this.user.authenticate(res, post.password);
+                    thiss.user.authenticate(post.password);
+                    thiss.sendData(res, null);
                 } else {
 
                     if (post.newPassword == post.rnewPassword) {
                         console.log("same..");
-                        this.user.createKeys(res, post.newName, post.newLastName, post.newPassword);
+                        thiss.user.createKeys(post.newName, post.newLastName, post.newPassword);
+                        thiss.sendData(res, null);
                     } else {
                         console.log("not the same..");
-                        this.sendData(res, null);
+                        thiss.sendData(res, null);
                     }
                 }
                 return;
@@ -144,7 +147,7 @@ module.exports = function Serve(user) {
 
 
 
-    serve: function(req, res) {
+    this.serve = function(req, res) {
         console.log(req.url);
         console.log(req.headers);
         console.log(req.method);
