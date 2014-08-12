@@ -1,3 +1,5 @@
+'use strict'
+
 var lport = 8888;
 
 

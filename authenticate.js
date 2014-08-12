@@ -1,3 +1,5 @@
+'use strict';
+
 var authenticate = function(socket) {
 
     console.log("authenticate");

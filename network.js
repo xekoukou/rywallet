@@ -1,3 +1,5 @@
+'use strict';
+
 var surl = "192.168.1.3:8081";
 
 var searchArrayf = function(posX, posY, zoom, searchArray) {
@@ -46,7 +48,7 @@ function Data(view) {
     }
 
 
-    this.newNode = function(x, y, node) {
+    this.newNode = function(x, y) {
 
         this.socket.emit("request", {
             clientRequestId: thiss.clientRequestId,
@@ -54,8 +56,7 @@ function Data(view) {
                 type: "newNode",
                 node: {
                     posX: x,
-                    posY: y,
-                    node: node
+                    posY: y
                 }
             }
         });
@@ -111,6 +112,7 @@ function Data(view) {
 
         });
         console.log("newLink request transmitted");
+        thiss.clientRequestId++;
 
     }
 
@@ -124,14 +126,72 @@ function Data(view) {
                 link: {
                     origId: origId,
                     endId: endId,
-                    id: id
+                    linkData: {
+                        id: id
+                    }
                 }
             }
         });
 
         console.log("delLink request transmitted");
+        thiss.clientRequestId++;
 
     }
+    //one of summary or content should be null
+    this.newNodeData = function(id, summary, content) {
+        var data = {};
+        data.id = id;
+        data.type = 'newNodeData';
+        data.nodeData = {};
+        if (summary != null) {
+            data.nodeData.summary = summary;
+        }
+        if (content != null) {
+            data.nodeData.content = content;
+        }
+
+        this.socket.emit("request", {
+            clientRequestId: thiss.clientRequestId,
+            request: data
+
+        });
+
+        console.log("newNodeData request transmitted");
+        thiss.clientRequestId++;
+
+
+    }
+
+    //one of summary or content should be null
+    this.newLinkData = function(origId, endId, id, summary, content) {
+        var data = {
+            type: 'newLinkData',
+            link: {
+                origId: origId,
+                endId: endId
+            }
+        };
+        data.link.linkData = {};
+        data.link.linkData.id = id;
+        if (summary != null) {
+            data.link.linkData.summary = summary;
+        }
+        if (content != null) {
+            data.link.linkData.content = content;
+        }
+
+        this.socket.emit("request", {
+            clientRequestId: thiss.clientRequestId,
+            request: data
+
+        });
+
+        console.log("newLinkData request transmitted");
+        thiss.clientRequestId++;
+
+
+    }
+
 
     this.socket.on("newData", function(data) {
         console.log("newData:" + JSON.stringify(data));
@@ -139,36 +199,35 @@ function Data(view) {
         var ids = new Array();
         var index = 0;
 
-
-        if (typeof data.newNodes != 'undefined') {
+        var id;
+        if (data.newNodes != null) {
             var newNodes = data.newNodes;
-
+            var i;
             for (i = 0; i < newNodes.length; i++) {
                 var node = newNodes[i];
-                var id = node.id;
+                id = node.id;
                 //remove if it exists 
                 if (id in thiss.nodes) {
                     thiss.view.removeNode(id);
                 }
-                if (typeof node.node.input == 'undefined' || node.node.input == null) {
+                if (node.node.input == null) {
                     node.node.input = new Array();
                 }
-                if (typeof node.node.output == 'undefined' || node.node.output == null) {
+                if (node.node.output == null) {
                     node.node.output = new Array();
                 }
                 thiss.nodes[id] = node;
                 ids[index] = id;
                 index++;
-                view.hardChangeView(view.cleanUnNodes(ids));
 
             }
         }
 
-        if (typeof data.deletedNodes != 'undefined') {
+        if (data.deletedNodes != null) {
             var deletedNodes = data.deletedNodes;
-
+            var i;
             for (i = 0; i < deletedNodes.length; i++) {
-                var id = deletedNodes[i];
+                id = deletedNodes[i];
                 //remove if it exists 
                 if (id in thiss.nodes) {
                     thiss.view.removeNode(id);
@@ -177,7 +236,7 @@ function Data(view) {
             }
         }
 
-        if (typeof data.newLinks != 'undefined') {
+        if (data.newLinks != null) {
             //TODO grab the two nodes and transfer the data
             var newLinks = data.newLinks;
 
@@ -204,7 +263,7 @@ function Data(view) {
             }
         }
 
-        if (typeof data.delLinks != 'undefined') {
+        if (data.delLinks != null) {
             //TODO grab the two nodes and transfer the data
             var delLinks = data.delLinks;
 
@@ -217,7 +276,7 @@ function Data(view) {
                     var input = node.node.input;
                     var j;
                     for (j = 0; j < input.length; j++) {
-                        if (input[j].id == link.id) {
+                        if ((input[j].linkData.id == link.linkData.id) && (input[j].origId == origId)) {
                             input.splice(j, 1);
 
                             break;
@@ -233,7 +292,7 @@ function Data(view) {
                     var output = node.node.output;
                     var j;
                     for (j = 0; j < output.length; j++) {
-                        if (output[j].id == link.id) {
+                        if ((output[j].linkData.id == link.linkData.id) && (output[j].endId == endId)) {
                             output.splice(j, 1);
 
                             break;
@@ -246,6 +305,88 @@ function Data(view) {
                 }
             }
         }
+
+        if (data.newNodeData != null) {
+            var newNodeData = data.newNodeData;
+            var i;
+            for (i = 0; i < newNodeData.length; i++) {
+                var nd = newNodeData[i];
+                id = nd.id;
+                var node;
+                //remove if it exists 
+                if (id in thiss.nodes) {
+                    node = thiss.nodes[id];
+                    if (nd.nodeData.summary != null) {
+                        node.node.nodeData.summary = nd.nodeData.summary;
+                    }
+                    if (nd.nodeData.content != null) {
+                        node.node.nodeData.content = nd.nodeData.content;
+                    }
+                    if (node.node.input == null) {
+                        node.node.input = new Array();
+                    }
+                    if (node.node.output == null) {
+                        node.node.output = new Array();
+                    }
+                    thiss.view.removeNode(id);
+                    thiss.nodes[id] = node;
+                    ids[index] = id;
+                    index++;
+                }
+            }
+        }
+
+        //TODO
+        if (data.newLinkData != null) {
+            //TODO grab the two nodes and transfer the data
+            var newLinkData = data.newLinkData;
+
+            for (i = 0; i < newLinkData.length; i++) {
+                var link = newLinkData[i];
+                var origId = link.origId;
+                var endId = link.endId;
+                if (endId in thiss.nodes) {
+                    var node = thiss.nodes[endId];
+                    var j;
+                    var input = node.node.input;
+                    for (j = 0; j < input.length; j++) {
+                        if (link.linkData.id == input[j].linkData.id) {
+                            if (link.linkData.summary != null) {
+                                input[j].linkData.summary = link.linkData.summary;
+                            }
+                            if (link.linkData.content != null) {
+                                input[j].linkData.content = link.linkData.content;
+                            }
+                        }
+                    }
+                    thiss.view.removeNode(endId);
+                    thiss.nodes[endId] = node;
+                    ids[index] = endId;
+                    index++;
+                }
+                if (origId in thiss.nodes) {
+                    var node = thiss.nodes[origId];
+                    var j;
+                    var output = node.node.output;
+                    for (j = 0; j < output.length; j++) {
+                        if (link.linkData.id == output[j].linkData.id) {
+                            if (link.linkData.summary != null) {
+                                output[j].linkData.summary = link.linkData.summary;
+                            }
+                            if (link.linkData.content != null) {
+                                output[j].linkData.content = link.linkData.content;
+                            }
+                        }
+                        thiss.view.removeNode(origId);
+                        thiss.nodes[origId] = node;
+                        ids[index] = origId;
+                        index++;
+                    }
+                }
+            }
+        }
+
+
 
 
         view.hardChangeView(view.cleanUnNodes(ids));
@@ -274,7 +415,7 @@ function Data(view) {
             var ids = new Array();
 
 
-
+            var i;
             for (i = 0; i < nodeArray.length; i++) {
                 var node = nodeArray[i];
                 var id = node.id;
@@ -306,7 +447,9 @@ function Data(view) {
 
     this.empty = function() {
 
-        Object.keys(this.nodes).forEach(this.view.removeNode(id));
+        Object.keys(this.nodes).forEach(function(id) {
+            this.view.removeNode(id)
+        });
 
     }
 }

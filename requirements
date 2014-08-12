@@ -3,4 +3,8 @@ jquery-ui.css
 jquery-ui.js
 jquery.js
 d3.js
+pagedown
+socket.io
+https://github.com/ajaxorg/ace
+openpgp.js
 

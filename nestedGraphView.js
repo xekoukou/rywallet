@@ -1,3 +1,5 @@
+'use strict'
+
 var id_connector = 'graphCanvas';
 var maxWidth = 1920;
 var maxHeight = 1080;
@@ -11,12 +13,46 @@ var timer = window.setInterval(function() {
 var ids = new Array();
 var index = 0;
 var inside = 0;
+var productId = new Array();
 
+//view switch from product to process etc.
+var productView = false;
 
-var divNode = function(id, content) {
+var markdown = new Markdown.Converter();
 
-    return "<div class='" + id + " nestedGraphNode'>" + content + "</div>";
+var divNode = function(id, summary, content) {
 
+    if (content == null) {
+        content = "";
+    }
+    return "<div class='" + id + " nestedGraphNode'> <div class='" + id + " summary'>" + markdown.makeHtml(summary) + "</div> <div class='" + id + " content'>" + markdown.makeHtml(content) + "</div></div>";
+
+}
+
+var divProductNodes = function(id, products) {
+
+    var result = "<div class='" + id + " nestedGraphNode'> ";
+    var lids = Object.keys(products);
+    if (lids.length == 0) {
+        products[-1] = ({
+            id: -1,
+            summary: "no product"
+        });
+        lids = Object.keys(products);
+    }
+    lids.forEach(function(lid) {
+
+        var product = products[lid];
+
+        if (product.content == null) {
+            product.content = "";
+        }
+
+        result = result + "<div class='" + id + " " + product.id + " summary'>" + markdown.makeHtml(product.summary) + "</div> <div class='" + id + " content'>" + markdown.makeHtml(product.content) + "</div>";
+
+    });
+
+    return result + "</div>";
 }
 
 // zoom , the zoom level in centimeters per real centimeter
@@ -24,9 +60,9 @@ var divNode = function(id, content) {
 
 
 //rootId has #
-    function ArrowCanvas(rootId, nodes) {
+    function ArrowCanvas(rootId, nodess) {
 
-        var nodes = nodes;
+        var nodes = nodess;
 
         var vis = d3.select("#graphCanvas").append("svg").attr("width", maxWidth).attr("height", maxHeight);
 
@@ -35,17 +71,66 @@ var divNode = function(id, content) {
             var links = new Array();
             Object.keys(nodes).forEach(function(id) {
                 var output = nodes[id].node.output;
-                var i;
+                var i = 0;
+                //used by productView
+                var totalHeight = {};
+                if (output.length > 0) {
+                    totalHeight[output[i].linkData.id] = {
+                        h: 0,
+                        once: 0
+                    };
+                }
                 for (i = 0; i < output.length; i++) {
+
+
+                    if (productView) {
+                        var lid = output[i].linkData.id;
+
+                        var origWidth = $("." + output[i].origId + "." + output[i].linkData.id + '.summary').css('width');
+                        origWidth = parseInt(origWidth.split("p", 1)[0]) + 4;
+                        var origHeight = $("." + output[i].origId + "." + output[i].linkData.id + '.summary').css('height');
+                        origHeight = parseInt(origHeight.split("p", 1)[0]) + 4 + totalHeight[lid].h;
+
+                        if (totalHeight[lid].once == 0) {
+                            var j = i;
+                            for (j = i; j < output.length; j++) {
+                                var nlid = output[j].linkData.id;
+                                if (totalHeight[nlid] == null) {
+                                    totalHeight[nlid] = {
+                                        h: 2 * origHeight - totalHeight[lid].h,
+                                        once: 0
+                                    };
+                                    break;
+                                }
+                            }
+                            totalHeight[lid].once = 1;
+                        }
+
+                        if (nodes[output[i].endId] != null) {
+                            //TODO
+                            var endHeight = $("." + output[i].endId + '.summary').css('height');
+                            endHeight = parseInt(endHeight.split("p", 1)[0]) + 4;
+                        }
+                    } else {
+                        if (nodes[output[i].endId] != null) {
+                            var origWidth = $("." + output[i].origId + '.summary').css('width');
+                            origWidth = parseInt(origWidth.split("p", 1)[0]) + 4;
+                            var origHeight = $("." + output[i].origId + '.summary').css('height');
+                            origHeight = parseInt(origHeight.split("p", 1)[0]) + 4;
+                            var endHeight = $("." + output[i].endId + '.summary').css('height');
+                            endHeight = parseInt(endHeight.split("p", 1)[0]) + 4;
+                            //4 is the padding
+                        }
+                    }
 
                     if (nodes[output[i].endId] != null) {
                         links.push(
 
                             {
-                                x: (nodes[output[i].origId].posX - posX) * zoom,
-                                y: (nodes[output[i].origId].posY - posY) * zoom,
+                                x: (nodes[output[i].origId].posX - posX) * zoom + origWidth,
+                                y: (nodes[output[i].origId].posY - posY) * zoom + origHeight / 2,
                                 toX: (nodes[output[i].endId].posX - posX) * zoom,
-                                toY: (nodes[output[i].endId].posY - posY) * zoom
+                                toY: (nodes[output[i].endId].posY - posY) * zoom + endHeight / 2
                             }
                         );
                     }
@@ -71,8 +156,9 @@ var divNode = function(id, content) {
 
             var llinks = new Array();
             var rlinks = new Array();
+            var i;
             for (i = 0; i < links.length; i++) {
-                var headlen = 10;
+                var headlen = 15;
                 var angle = Math.atan2(links[i].toY - links[i].y, links[i].toX - links[i].x);
 
                 llinks.push({
@@ -192,9 +278,16 @@ var divNode = function(id, content) {
         this.hardChangeView = function(changedIds) {
 
             for (var i = 0; i < changedIds.length; i++) {
-
                 var node = this.data.nodes[changedIds[i]];
-                $(this.rootId).append(divNode(node.id, node.node.nodeData.summary));
+                if (productView) {
+                    var products = {};
+                    node.node.output.forEach(function(link) {
+                        products[link.linkData.id] = link.linkData;
+                    });
+                    $(this.rootId).append(divProductNodes(node.id, products));
+                } else {
+                    $(this.rootId).append(divNode(node.id, node.node.nodeData.summary, node.node.nodeData.content));
+                }
             }
 
             $(".nestedGraphNode").on("mouseenter",
@@ -204,24 +297,38 @@ var divNode = function(id, content) {
                     inside = 1;
                 }
             );
-            $(".nestedGraphNode").on("mouseout",
+            $(".nestedGraphNode").on("mouseleave",
 
                 function(e) {
                     inside = 0;
                 }
             );
+            $(".summary").on("mouseenter",
+
+                function(e) {
+                    //this is only relevant when productView is true else it returns summary
+                    productId[index] = parseInt(e.target.className.split(' ', 2)[1]);
+                }
+            );
+
 
 
             this.softChangeView(changedIds);
 
         };
+        this.removeAllNodeDoms = function() {
+            var ids = Object.keys(view.data.nodes);
+            ids.forEach(function(id) {
+                thiss.removeNodeDom(id);
+            });
 
-        this.removeNode = function(id) {
+        };
+        this.removeNodeDom = function(id) {
             $('.' + id + '.nestedGraphNode').remove();
-            delete thiss.data.nodes[id];
-            this.arrowCanvas.drawArrows(this.posX, this.posY, this.zoom);
-
-
+        };
+        this.removeNode = function(id) {
+            this.removeNodeDom(id);
+            delete this.data.nodes[id];
         };
 
         //load the interactions

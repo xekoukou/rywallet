@@ -1,0 +1,17 @@
+{
+    "name": "Ryaki",
+    "description": "This is the ryaki Wallet",
+    "version": "0.0.1",
+    "manifest_version": 2,
+    "icons": {
+        "16": "stream-16.png",
+        "128": "stream-128.png"
+    },
+    "permissions": ["alarms", "notifications", "unlimitedStorage"],
+    "app": {
+        "background": {
+            "scripts": ["background.js"],
+            "persistent": false
+        }
+    }
+}
